@@ -2212,7 +2212,7 @@ static int ath6kl_wow_suspend_vif(struct ath6kl_vif *vif,
 
 static int ath6kl_wow_suspend(struct ath6kl *ar, struct cfg80211_wowlan *wow)
 {
-	struct ath6kl_vif *first_vif, *vif;
+	struct ath6kl_vif *first_vif, *vif, *tmp_vif;
 	int ret = 0;
 	u32 filter = 0;
 	bool connected = false;
@@ -2228,13 +2228,15 @@ static int ath6kl_wow_suspend(struct ath6kl *ar, struct cfg80211_wowlan *wow)
 
 	/* install filters for each connected vif */
 	spin_lock_bh(&ar->list_lock);
-	list_for_each_entry(vif, &ar->vif_list, list) {
+	list_for_each_entry_safe(vif, tmp_vif, &ar->vif_list, list) {
 		if (!test_bit(CONNECTED, &vif->flags) ||
 		    !ath6kl_cfg80211_ready(vif))
 			continue;
 		connected = true;
 
+		spin_unlock_bh(&ar->list_lock);
 		ret = ath6kl_wow_suspend_vif(vif, wow, &filter);
+		spin_lock_bh(&ar->list_lock);
 		if (ret)
 			break;
 	}
