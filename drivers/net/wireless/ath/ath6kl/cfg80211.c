@@ -2297,7 +2297,7 @@ static int ath6kl_wow_resume_vif(struct ath6kl_vif *vif)
 
 static int ath6kl_wow_resume(struct ath6kl *ar)
 {
-	struct ath6kl_vif *vif;
+	struct ath6kl_vif *vif, *tmp_vif;
 	int ret;
 
 	vif = ath6kl_vif_first(ar);
@@ -2316,11 +2316,13 @@ static int ath6kl_wow_resume(struct ath6kl *ar)
 	}
 
 	spin_lock_bh(&ar->list_lock);
-	list_for_each_entry(vif, &ar->vif_list, list) {
+	list_for_each_entry_safe(vif, tmp_vif, &ar->vif_list, list) {
 		if (!test_bit(CONNECTED, &vif->flags) ||
 		    !ath6kl_cfg80211_ready(vif))
 			continue;
+		spin_unlock_bh(&ar->list_lock);
 		ret = ath6kl_wow_resume_vif(vif);
+		spin_lock_bh(&ar->list_lock);
 		if (ret)
 			break;
 	}
